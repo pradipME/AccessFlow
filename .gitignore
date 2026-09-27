@@ -58,11 +58,24 @@ logs/
 *.log
 
 # ---------- Environment / secrets ----------
+# Never commit real credentials. Only *.example / *.template files are tracked.
 .env
 .env.*
 !.env.example
 application-local.properties
+application-local.properties.example
 application-local.yml
+application-local.yml.example
+application-*.local.properties
+application-*.local.yml
+secrets/
+*.pem
+*.key
+*.p12
+*.jks
+!.env.example
+!*.example
+!*.template
 
 # ---------- OS files ----------
 .DS_Store

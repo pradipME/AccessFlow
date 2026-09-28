@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Sign in')}"></head>
+<body>
+<main class="card narrow">
+  <h1>AccessFlow</h1>
+  <p class="muted">IT access requests and approvals</p>
+
+  <!--/* Spring Security redirects here with ?error or ?logout. The message is the
+         same one the login endpoint returns, so a failed attempt reveals nothing
+         about which email addresses exist. */-->
+  <p class="alert error" th:if="${param.error}">Invalid email or password.</p>
+  <p class="alert info" th:if="${param.logout}">You have been signed out.</p>
+
+  <form th:action="@{/login}" method="post">
+    <label for="email">Work email</label>
+    <input type="email" id="email" name="email" autocomplete="username" required autofocus>
+
+    <label for="password">Password</label>
+    <input type="password" id="password" name="password" autocomplete="current-password" required>
+
+    <button type="submit">Sign in</button>
+  </form>
+</main>
+</body>
+</html>

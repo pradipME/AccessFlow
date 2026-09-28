@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Review queue')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav}"></header>
+
+<main>
+  <h1>Review queue</h1>
+
+  <!--/* A GET form, so filtering is a shareable link and needs no CSRF token:
+         choosing a status changes nothing. The values come from the controller
+         rather than being spelled out here, so the list cannot fall behind the
+         workflow - WITHDRAWN appears in the list because the workflow has it.
+
+         No hidden page input: applying a new filter always starts at page 0.
+         Carrying the current page over would land the reviewer past the end of a
+         shorter result set and show them an empty table. */-->
+  <form th:action="@{/requests/review}" method="get" class="filter">
+    <label for="status">Status</label>
+    <select id="status" name="status">
+      <option value="">All</option>
+      <option th:each="status : ${statuses}"
+              th:value="${status.name()}"
+              th:text="${status}"
+              th:selected="${selectedStatus != null and selectedStatus == status}">STATUS</option>
+    </select>
+    <button type="submit">Filter</button>
+  </form>
+
+  <p class="empty" th:if="${#lists.isEmpty(page.items())}">
+    No requests match this filter.
+  </p>
+
+  <table class="grid" th:unless="${#lists.isEmpty(page.items())}">
+    <thead>
+    <tr>
+      <th>Requester</th>
+      <th>Application</th>
+      <th>Status</th>
+      <th>Next stage</th>
+      <th>Requested</th>
+      <th></th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:each="request : ${page.items()}">
+      <td>
+        <span th:text="|${request.applicant().firstName()} ${request.applicant().lastName()}|">name</span>
+        <br>
+        <span class="muted" th:text="${request.applicant().email()}">email</span>
+      </td>
+      <td th:text="${request.application()}">application</td>
+      <td><span class="badge" th:classappend="${request.status().name().toLowerCase()}"
+                th:text="${request.status()}">PENDING</span></td>
+      <!--/* Which stage a reviewer would be acting on, so they can tell without
+           opening every request whether it is theirs to decide. nextStage() is the
+           same definition the pages and the service use, and it is null for a
+           resolved request rather than pointing at a stage that can no longer be
+           decided. */-->
+      <td>
+        <span th:if="${request.nextStage() != null}"
+              th:text="|Stage ${request.nextStage().order()} of ${request.stages().size()} (${request.nextStage().requiredRole()})|">stage</span>
+        <span class="muted" th:if="${request.nextStage() == null}">-</span>
+      </td>
+      <td th:text="${#temporals.format(request.createdAt(), 'dd MMM yyyy HH:mm')}">created</td>
+      <td><a th:href="@{'/requests/' + ${request.id()}}">Open</a></td>
+    </tr>
+    </tbody>
+  </table>
+
+  <!--/* Every link carries the filter and the page size, so moving between pages
+         cannot silently drop the status the reviewer chose or change the density
+         they picked. The previous/next pair is bounds-checked against the flags
+         the service computed, which is what keeps page 0 from offering a
+         page -1.
+
+         Drawn when this is not the first page OR not the last, rather than when
+         there is more than one page. Those differ for a bookmark that has gone
+         stale: a page past the end of a single-page queue is neither first nor
+         first-and-last, and it still needs a way back. */-->
+  <nav class="pagination"
+       th:if="${!page.first() or !page.last()}" aria-label="Queue pages">
+    <a th:if="${!page.first()}"
+       th:href="@{/requests/review(status=${selectedStatus}, page=${page.page() - 1}, size=${page.size()})}">Previous</a>
+    <span class="muted" th:text="|Page ${page.page() + 1} of ${page.totalPages()}|">position</span>
+    <a th:if="${!page.last()}"
+       th:href="@{/requests/review(status=${selectedStatus}, page=${page.page() + 1}, size=${page.size()})}">Next</a>
+  </nav>
+
+  <p class="muted" th:text="|${page.totalElements()} request(s) total|">total</p>
+</main>
+</body>
+</html>

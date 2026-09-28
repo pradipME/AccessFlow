@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<!--
+  Shared pieces. Kept in one file so the navigation and the document head are
+  declared once; each page replaces the two fragments it needs.
+
+  Everything user-supplied is written with th:text, which escapes HTML. Free
+  text such as a justification must never be rendered with th:utext, or an
+  employee could store a script in their own request and have a reviewer run it.
+-->
+<head th:fragment="head(pageTitle)">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title th:text="|${pageTitle} - AccessFlow|">AccessFlow</title>
+  <link rel="stylesheet" th:href="@{/css/accessflow.css}">
+</head>
+<body>
+<!--/* currentUser is null on the login page and on a page rendered from the
+       security filter chain, so the session half is conditional. */-->
+<header th:fragment="nav" class="topbar">
+  <a class="brand" th:href="@{/}">AccessFlow</a>
+  <nav th:if="${currentUser != null}" class="links">
+    <a th:href="@{/requests}">My requests</a>
+    <a th:href="@{/requests/new}">New request</a>
+    <a th:href="@{/requests/review}" th:if="${currentUser.reviewer()}">Review queue</a>
+  </nav>
+  <div th:if="${currentUser != null}" class="session">
+    <span class="who" th:text="|${currentUser.displayName()} (${currentUser.role()})|">Signed in</span>
+    <!--/* A form and not a link: signing out changes state, so it must be a POST
+           and must carry the CSRF token that Thymeleaf adds to any th:action form. */-->
+    <form th:action="@{/logout}" method="post" class="inline">
+      <button type="submit" class="link">Sign out</button>
+    </form>
+  </div>
+</header>
+</body>
+</html>

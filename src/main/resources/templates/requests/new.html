@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('New access request')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav}"></header>
+
+<main>
+  <h1>Request access to an application</h1>
+  <p class="muted">Filed as
+    <span th:text="|${currentUser.displayName()} (${currentUser.email()})|">you</span>.
+    The applicant is always the signed-in user, so there is nothing to fill in
+    about who you are.</p>
+
+  <!--/* th:object plus th:field bind this form to the same DTO the API uses, so the
+       field names and the validation messages are identical on both. A rejected
+       submission comes back here with the values kept and the reasons shown. */-->
+  <form th:action="@{/requests/new}" th:object="${accessRequestForm}" method="post" class="card">
+    <label for="application">Application</label>
+    <input type="text" id="application" th:field="*{application}" maxlength="100" required>
+    <p class="field-error" th:if="${#fields.hasErrors('application')}" th:errors="*{application}">error</p>
+
+    <label for="justification">Why do you need it?</label>
+    <textarea id="justification" th:field="*{justification}" rows="5" maxlength="1000" required></textarea>
+    <p class="field-error" th:if="${#fields.hasErrors('justification')}" th:errors="*{justification}">error</p>
+
+    <div class="actions">
+      <button type="submit">Submit request</button>
+      <a th:href="@{/requests}">Cancel</a>
+    </div>
+  </form>
+</main>
+</body>
+</html>

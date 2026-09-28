@@ -1,0 +1,349 @@
+/* AccessFlow - one stylesheet, no build step and no external requests.
+   Everything the pages need is in the repository, so a page renders the same
+   offline as it does on a network. */
+
+:root {
+    --ink: #1c2733;
+    --muted: #5b6b7c;
+    --line: #d5dde5;
+    --bg: #f4f6f9;
+    --panel: #ffffff;
+    --accent: #1b5e9c;
+    --danger: #a32020;
+    --pending: #8a6100;
+    --approved: #1c6b3c;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 16px/1.5 "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+a {
+    color: var(--accent);
+}
+
+/* ---------- top bar ---------- */
+
+.topbar {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 0.75rem 1.5rem;
+    background: var(--panel);
+    border-bottom: 1px solid var(--line);
+}
+
+.brand {
+    font-weight: 700;
+    font-size: 1.1rem;
+    text-decoration: none;
+}
+
+.links {
+    display: flex;
+    gap: 1rem;
+}
+
+.session {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.who {
+    color: var(--muted);
+    font-size: 0.9rem;
+}
+
+/* ---------- layout ---------- */
+
+main {
+    max-width: 62rem;
+    margin: 0 auto;
+    padding: 1.5rem;
+}
+
+h1 {
+    font-size: 1.6rem;
+    margin: 0 0 1rem;
+}
+
+h2 {
+    font-size: 1.15rem;
+    margin: 0 0 0.5rem;
+}
+
+.card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 1.25rem;
+    margin: 0 0 1.25rem;
+}
+
+.narrow {
+    max-width: 26rem;
+    margin: 3rem auto;
+}
+
+.muted {
+    color: var(--muted);
+}
+
+.lead {
+    font-size: 1.05rem;
+}
+
+.empty {
+    background: var(--panel);
+    border: 1px dashed var(--line);
+    border-radius: 6px;
+    padding: 1.5rem;
+    color: var(--muted);
+}
+
+.pre {
+    white-space: pre-wrap;
+    word-break: break-word;
+    margin: 0;
+}
+
+code {
+    background: #eef1f5;
+    padding: 0.1rem 0.3rem;
+    border-radius: 3px;
+}
+
+.identity {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.25rem 1rem;
+    margin: 0 0 1.5rem;
+}
+
+.identity dt {
+    color: var(--muted);
+}
+
+.identity dd {
+    margin: 0;
+}
+
+.cards {
+    list-style: none;
+    padding: 0;
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+}
+
+.cards li {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 1rem;
+}
+
+.cards p {
+    margin: 0.35rem 0 0;
+    font-size: 0.9rem;
+}
+
+/* ---------- forms ---------- */
+
+label {
+    display: block;
+    font-weight: 600;
+    margin: 0.75rem 0 0.25rem;
+}
+
+input,
+select,
+textarea {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    font: inherit;
+    background: #fff;
+}
+
+button {
+    margin-top: 1rem;
+    padding: 0.5rem 1rem;
+    border: 0;
+    border-radius: 4px;
+    background: var(--accent);
+    color: #fff;
+    font: inherit;
+    cursor: pointer;
+}
+
+button.danger {
+    background: var(--danger);
+}
+
+button.link {
+    margin: 0;
+    padding: 0;
+    background: none;
+    color: var(--accent);
+    text-decoration: underline;
+}
+
+form.inline {
+    display: inline;
+}
+
+.actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.field-error {
+    color: var(--danger);
+    font-size: 0.9rem;
+    margin: 0.35rem 0 0;
+}
+
+.alert {
+    padding: 0.6rem 0.8rem;
+    border-radius: 4px;
+    margin: 0 0 1rem;
+}
+
+.alert.error {
+    background: #fbeaea;
+    color: var(--danger);
+    border: 1px solid #eec4c4;
+}
+
+.alert.info {
+    background: #e8f2fb;
+    color: var(--accent);
+    border: 1px solid #bcd9f0;
+}
+
+.filter {
+    display: flex;
+    align-items: end;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+}
+
+.filter label {
+    margin-top: 0;
+}
+
+.filter select {
+    width: auto;
+}
+
+.filter button {
+    margin-top: 0;
+}
+
+.review {
+    display: grid;
+    gap: 1.25rem;
+    grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+}
+
+/* ---------- tables ---------- */
+
+table.grid {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+}
+
+table.grid th,
+table.grid td {
+    text-align: left;
+    padding: 0.6rem 0.75rem;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+}
+
+table.grid thead th {
+    background: #eef1f5;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--muted);
+}
+
+table.grid tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.badge {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    border: 1px solid currentColor;
+}
+
+.badge.pending {
+    color: var(--pending);
+}
+
+.badge.approved {
+    color: var(--approved);
+}
+
+.badge.rejected {
+    color: var(--danger);
+}
+
+/* Grey rather than a warning colour: a withdrawn request was closed by the
+   applicant, so it is neither approved nor a failure needing attention. */
+.badge.withdrawn {
+    color: var(--muted);
+}
+
+/* The history on a request: a plain vertical list, no connectors. The actions
+   already carry coloured badges, so any extra rule would compete with them. */
+.timeline {
+    margin: 0;
+    padding-left: 1.2rem;
+}
+
+.timeline li {
+    margin-bottom: 0.75rem;
+}
+
+.timeline p {
+    margin: 0.25rem 0 0;
+}
+
+/* The stage the next decision applies to. Bold and a left rule, so the stage a
+   reviewer is expected to act on is findable without reading every line. Added
+   by the class the template applies, never to the .timeline itself, so the
+   history list is unaffected. */
+.timeline li.current {
+    font-weight: 600;
+    border-left: 3px solid var(--pending);
+    padding-left: 0.6rem;
+    margin-left: -0.6rem;
+}
+
+.pagination {
+    display: flex;
+    gap: 1rem;
+    align-items: baseline;
+    margin-top: 1rem;
+}

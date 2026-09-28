@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<!--
+  The one error page.
+
+  Rendered for every failure a browser can meet: a page or a form that went wrong
+  (WebViewAdvice), a URL that matches no controller (WebErrorPageResolver), and a
+  refusal decided in the security filter chain before any controller ran
+  (SecurityConfig). All three fill the same model, so the status is already on
+  the response by the time this renders.
+
+  The message is shown escaped and the unexpected-exception case always carries a
+  fixed sentence, so no stack trace, class name or internal detail can reach the
+  browser.
+-->
+<head th:replace="~{fragments/layout :: head('Something went wrong')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav}"></header>
+
+<main class="card narrow">
+  <h1 th:text="${status} + ' ' + ${error}">400 Bad Request</h1>
+  <p class="lead" th:if="${message}" th:text="${message}">message</p>
+  <p class="muted" th:if="${path}">
+    Requested path: <code th:text="${path}">/path</code>
+  </p>
+  <p>
+    <a th:href="@{/}">Back to the start</a>
+    <span th:if="${currentUser == null}"> &middot; <a th:href="@{/login}">Sign in</a></span>
+  </p>
+</main>
+</body>
+</html>

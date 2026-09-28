@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Home')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav}"></header>
+
+<main>
+  <h1 th:text="|Hello, ${currentUser.displayName()}|">Hello</h1>
+
+  <dl class="identity">
+    <dt>Email</dt>
+    <dd th:text="${currentUser.email()}">email</dd>
+    <dt>Role</dt>
+    <dd th:text="${currentUser.role()}">role</dd>
+    <dt>Department</dt>
+    <dd th:text="${currentUser.department()} ?: 'Not set'">department</dd>
+  </dl>
+
+  <h2>What you can do</h2>
+  <ul class="cards">
+    <li>
+      <a th:href="@{/requests/new}">Request access to an application</a>
+      <p class="muted">Ask for GitHub, Jira, AWS, VPN, HRMS or anything else, with a reason.</p>
+    </li>
+    <li>
+      <a th:href="@{/requests}">See your requests</a>
+      <p class="muted">Track what you have asked for and how it was decided.</p>
+    </li>
+    <li th:if="${currentUser.reviewer()}">
+      <a th:href="@{/requests/review}">Review the queue</a>
+      <p class="muted">Approve or reject requests from other people.</p>
+    </li>
+  </ul>
+</main>
+</body>
+</html>

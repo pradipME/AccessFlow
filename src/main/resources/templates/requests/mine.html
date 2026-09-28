@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('My requests')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav}"></header>
+
+<main>
+  <h1>My requests</h1>
+  <p><a th:href="@{/requests/new}">Request access to an application</a></p>
+
+  <p class="empty" th:if="${#lists.isEmpty(accessRequests)}">
+    You have not asked for anything yet.
+  </p>
+
+  <table class="grid" th:unless="${#lists.isEmpty(accessRequests)}">
+    <thead>
+    <tr>
+      <th>Application</th>
+      <th>Status</th>
+      <th>Requested</th>
+      <th>Decision</th>
+      <th></th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:each="request : ${accessRequests}">
+      <td th:text="${request.application()}">application</td>
+      <td><span class="badge" th:classappend="${request.status().name().toLowerCase()}"
+                th:text="${request.status()}">PENDING</span></td>
+      <td th:text="${#temporals.format(request.createdAt(), 'dd MMM yyyy HH:mm')}">created</td>
+      <td>
+        <span th:if="${request.reviewedAt() != null}"
+              th:text="|${request.reviewedBy().firstName()} ${request.reviewedBy().lastName()}, on ${#temporals.format(request.reviewedAt(), 'dd MMM yyyy')}|">decision</span>
+        <!--/* Checked before the pending case below. A withdrawn request has no
+               reviewer and never will, so describing it as "waiting for a
+               reviewer" is what this used to do, and it is a lie: nobody is
+               looking at it. */-->
+        <span th:if="${request.withdrawnAt() != null}"
+              th:text="|Withdrawn by you, on ${#temporals.format(request.withdrawnAt(), 'dd MMM yyyy')}|">withdrawn</span>
+        <span class="muted" th:if="${request.reviewedAt() == null and request.withdrawnAt() == null}">Waiting for a reviewer</span>
+      </td>
+      <td><a th:href="@{'/requests/' + ${request.id()}}">Open</a></td>
+    </tr>
+    </tbody>
+  </table>
+</main>
+</body>
+</html>

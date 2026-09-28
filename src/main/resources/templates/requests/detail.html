@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Access request')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav}"></header>
+
+<main>
+  <h1 th:text="${accessRequest.application()}">application</h1>
+
+  <p>
+    <span class="badge" th:classappend="${accessRequest.status().name().toLowerCase()}"
+          th:text="${accessRequest.status()}">PENDING</span>
+    <span class="muted" th:text="|Requested by ${accessRequest.applicant().firstName()} ${accessRequest.applicant().lastName()} on ${#temporals.format(accessRequest.createdAt(), 'dd MMM yyyy HH:mm')}|">meta</span>
+  </p>
+
+  <section class="card">
+    <h2>Justification</h2>
+    <!--/* Escaped by th:text. The applicant controls this text, so it must never
+           be interpreted as markup. */-->
+    <p class="pre" th:text="${accessRequest.justification()}">justification</p>
+  </section>
+
+  <section class="card" th:if="${accessRequest.stages() != null and !accessRequest.stages().isEmpty()}">
+    <h2>Approval stages</h2>
+    <!--/* Read-only progress. Which stage is current is decided by the service and
+           carried on the response, so the page does not re-derive the workflow.
+           The current stage is emphasised only when it is genuinely outstanding. */-->
+    <ol class="timeline">
+      <li th:each="stage : ${accessRequest.stages()}"
+          th:classappend="${currentStage != null and currentStage.order() == stage.order()} ? 'current'">
+        <span class="badge" th:classappend="${stage.status().name().toLowerCase()}"
+              th:text="${stage.status()}">PENDING</span>
+        <span th:text="|Stage ${stage.order()}: requires ${stage.requiredRole()}|">stage</span>
+        <span th:if="${stage.decidedAt() != null}"
+              th:text="|by ${stage.decidedBy().firstName()} ${stage.decidedBy().lastName()} on ${#temporals.format(stage.decidedAt(), 'dd MMM yyyy HH:mm')}|">decider</span>
+        <p class="pre" th:if="${stage.notes() != null}" th:text="${stage.notes()}">notes</p>
+      </li>
+    </ol>
+  </section>
+
+  <section class="card" th:if="${accessRequest.reviewedAt() != null}">
+    <h2>Decision</h2>
+    <p th:text="|${accessRequest.status()} by ${accessRequest.reviewedBy().firstName()} ${accessRequest.reviewedBy().lastName()} on ${#temporals.format(accessRequest.reviewedAt(), 'dd MMM yyyy HH:mm')}|">decision</p>
+    <p class="pre" th:if="${accessRequest.reviewNotes() != null}" th:text="${accessRequest.reviewNotes()}">notes</p>
+    <p class="muted" th:if="${accessRequest.reviewNotes() == null}">No notes were left.</p>
+  </section>
+
+  <!--/* A withdrawal is shown as its own section rather than under "Decision":
+         no reviewer made it, and leaving it out would make a withdrawn request
+         look as though it were still open. */-->
+  <section class="card" th:if="${accessRequest.withdrawnAt() != null}">
+    <h2>Withdrawn</h2>
+    <p th:text="|Withdrawn by the applicant on ${#temporals.format(accessRequest.withdrawnAt(), 'dd MMM yyyy HH:mm')}|">withdrawn</p>
+    <p class="pre" th:if="${accessRequest.withdrawalReason() != null}" th:text="${accessRequest.withdrawalReason()}">reason</p>
+    <p class="muted" th:if="${accessRequest.withdrawalReason() == null}">No reason was given.</p>
+  </section>
+
+  <section class="card" th:if="${currentStage != null and !isApplicant}">
+    <h2>Awaiting a decision</h2>
+    <p class="muted" th:text="|This request is waiting on stage ${currentStage.order()}, which requires ${currentStage.requiredRole()}.|">stage</p>
+  </section>
+
+  <!--/* The review forms are drawn only when the page model says a decision is
+         possible, which means: the viewer is not the applicant, the request has
+         an outstanding stage, and the viewer holds the role that stage asks for.
+         That is presentation only. The POST handlers re-check every one of those
+         rules through AccessRequestService, so hiding the buttons is never what
+         enforces them. */-->
+  <div class="review" th:if="${canReview}">
+    <p class="muted" th:text="|You are deciding stage ${currentStage.order()} of ${accessRequest.stages().size()}, which requires ${currentStage.requiredRole()}.|">acting on</p>
+    <section class="card">
+      <h2>Approve</h2>
+      <form th:action="@{'/requests/' + ${accessRequest.id()} + '/approve'}" th:object="${approvalForm}"
+            method="post">
+        <label for="approve-notes">Notes (optional)</label>
+        <textarea id="approve-notes" th:field="*{notes}" rows="3" maxlength="1000"></textarea>
+        <p class="field-error" th:if="${#fields.hasErrors('notes')}" th:errors="*{notes}">error</p>
+        <button type="submit">Approve</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>Reject</h2>
+      <form th:action="@{'/requests/' + ${accessRequest.id()} + '/reject'}" th:object="${rejectionForm}"
+            method="post">
+        <label for="reject-notes">Reason (required)</label>
+        <textarea id="reject-notes" th:field="*{notes}" rows="3" maxlength="1000" required></textarea>
+        <p class="field-error" th:if="${#fields.hasErrors('notes')}" th:errors="*{notes}">error</p>
+        <button type="submit" class="danger">Reject</button>
+      </form>
+    </section>
+  </div>
+
+  <!--/* Withdrawal is the applicant's alone, so the form appears only for the
+         applicant of a still-pending request. Presenting it to anybody else would
+         offer an action the service refuses. */-->
+  <div class="review" th:if="${canWithdraw}">
+    <section class="card">
+      <h2>Withdraw this request</h2>
+      <!--/* The reason is optional. A rejection needs one because a reviewer owes
+             the applicant an explanation; withdrawing your own request owes
+             nobody one. */-->
+      <form th:action="@{'/requests/' + ${accessRequest.id()} + '/withdraw'}" th:object="${withdrawalForm}"
+            method="post">
+        <label for="withdraw-reason">Reason (optional)</label>
+        <textarea id="withdraw-reason" th:field="*{reason}" rows="3" maxlength="1000"></textarea>
+        <p class="field-error" th:if="${#fields.hasErrors('reason')}" th:errors="*{reason}">error</p>
+        <button type="submit" class="danger">Withdraw</button>
+      </form>
+    </section>
+  </div>
+
+  <section class="card" th:if="${history != null and !history.isEmpty()}">
+    <h2>History</h2>
+    <!--/* Oldest first, straight from the service. Read-only: this is a record of
+           what happened, not a list of actions. */-->
+    <ol class="timeline">
+      <li th:each="entry : ${history}">
+        <span class="badge" th:classappend="${entry.action().name().toLowerCase()}"
+              th:text="${entry.action()}">ACTION</span>
+        <span th:text="|${#temporals.format(entry.at(), 'dd MMM yyyy HH:mm')} by ${entry.actor().firstName()} ${entry.actor().lastName()}|">meta</span>
+        <p class="pre" th:if="${entry.notes() != null}" th:text="${entry.notes()}">notes</p>
+      </li>
+    </ol>
+  </section>
+
+  <p><a th:href="@{/requests}">Back to my requests</a></p>
+</main>
+</body>
+</html>

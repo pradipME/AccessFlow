@@ -96,6 +96,8 @@ are server-rendered and every form is a plain POST.
 ```
 AccessFlow
 ├── pom.xml
+├── Dockerfile               two-stage production image (Maven build, JRE run)
+├── .dockerignore            keeps target/ and .git/ out of the build context
 ├── README.md
 ├── .gitignore
 ├── db/
@@ -115,8 +117,8 @@ AccessFlow
     │   │   └── web/           Thymeleaf controllers, advice, view models
     │   └── resources
     │       ├── application.properties   committed, contains no secrets
-    │       ├── static/css/              one stylesheet
-    │       └── templates/               login, home, requests/*, error
+    │       ├── static/css/              one stylesheet, the whole design system
+    │       └── templates/               login, home, requests/*, error, fragments/
     └── test
         └── java/com/accessflow
             ├── IntegrationTestSupport.java   shared harness, one actor per role
@@ -445,6 +447,32 @@ reviewer past the end of a shorter result set and shows them an empty table. The
 Previous/Next links do carry both the filter and the page size, so paging cannot
 silently drop either.
 
+### Presentation
+
+`static/css/accessflow.css` is the whole front end. There is no build step, no
+framework, no webfont and no icon font, so a page renders identically offline and
+on a network - which matters when the same document has to be the one a browser
+receives. It is organised as a design system rather than as a pile of rules:
+
+| Concern | How it is done |
+|---|---|
+| Colour | Every value is a custom property in `:root`, so re-theming is one edit. Statuses are an ink plus a soft fill of the same hue, never two colours that disagree. |
+| Dark mode | One `@media (prefers-color-scheme: dark)` block re-declares the tokens. Components are written once in terms of tokens, so there is no dark-specific component CSS to fall out of date. |
+| Icons | Inline SVG using `currentColor`, so they follow the text colour and the theme with no extra request. |
+| Motion | One easing and one duration for the whole application, disabled wholesale under `prefers-reduced-motion`. |
+| Focus | A single `:focus-visible` ring, so keyboard users get a consistent indicator and a mouse click does not leave one behind. |
+| Narrow screens | A wide table becomes horizontally scrollable rather than being squeezed; the sign-in split collapses to one column. |
+| Printing | Nav, footer, pagination and the decision forms are dropped, so a request prints as a record. |
+
+Legibility is a rule, not a preference: text uses `--muted` or darker, which
+clears 4.5:1 against the panel in both themes. `--faint` is below that threshold
+by design and is reserved for placeholders and decorative glyphs.
+
+The layout fragment supplies the document head, the navigation and the footer.
+The navigation marks the current page from a `currentPath` model attribute
+(`WebViewAdvice`), which sets an `aria-current` attribute and a class and changes
+nothing else - the filter chain and the service still decide what a page shows.
+
 ### Two security chains
 
 The API and the pages authenticate differently, so `SecurityConfig` declares
@@ -755,10 +783,11 @@ environment, so the same file is used everywhere and is never edited to deploy.
 
 | Property | Default | Production |
 |---|---|---|
-| `spring.datasource.url` | `localhost:3306/accessflow`, built from four variables | set the variables |
+| `server.port` | `${PORT:8080}` | set by the platform; do not set it |
+| `server.forward-headers-strategy` | `framework` | unchanged |
+| `spring.datasource.url` | `localhost:3306/accessflow`, built from four variables | `ACCESSFLOW_DB_URL`, or the three variables |
 | `spring.datasource.username` | `accessflow` | set the variable |
 | `spring.datasource.password` | empty | **required** |
-| `server.port` | `8080` | usually fine |
 | `spring.jpa.hibernate.ddl-auto` | `update` | `validate` |
 | `spring.jpa.show-sql` | `true` | `false` |
 | `spring.jpa.open-in-view` | `false` | `false` |
@@ -771,11 +800,166 @@ variable, not by editing the file:
 | `ACCESSFLOW_DDL_AUTO` | value of `spring.jpa.hibernate.ddl-auto` | `validate` |
 | `ACCESSFLOW_SHOW_SQL` | value of `spring.jpa.show-sql` | `false` |
 
-`ddl-auto=validate` is the right production setting rather than `none`: `none`
-lets a missing table surface as "Table 'accessflow.users' doesn't exist" on the
-first query, while `validate` refuses to start if the schema does not match the
-entities. Either way the production schema is applied by a DBA, not by the
-application.
+### Listening port
+
+`server.port` is `${PORT:8080}`, not a fixed `8080`. PaaS builders - Render,
+Koyeb, Heroku and the rest - inject the port they intend to route to as `PORT`
+and route nowhere else, so an application that hardcodes a port binds a port
+nothing is listening on and is reported unhealthy. The `8080` fallback is what
+keeps a plain `java -jar` on a laptop working with nothing configured.
+
+### Behind a reverse proxy
+
+Render terminates TLS and forwards the request over plain HTTP.
+`server.forward-headers-strategy=framework` makes Spring apply
+`X-Forwarded-Proto` and `X-Forwarded-For` before anything else sees the request,
+so the application reasons about the HTTPS request the user actually made:
+`isSecure()` is true, the session cookie is marked `Secure`, and no scheme-
+dependent behaviour is wrong. Without it the application believes it is being
+served over plain HTTP on the proxy's own address.
+
+The property trusts the forwarded headers, which is correct **only** because the
+platform's proxy is the only thing that can reach the instance. Do not expose the
+instance port directly.
+
+Nothing else needs changing for a proxy. Every Thymeleaf URL is written with
+`@{...}`, which produces a context-relative path, so no template has to know the
+public host or scheme; and every redirect in `SecurityConfig` is relative
+(`/login?error`, `/login?logout`, `/`). `WebErrorPage` reports
+`getRequestURI()`, which is the path only and is unaffected by the proxy.
+
+### The JDBC URL in production
+
+`spring.datasource.url` reads `ACCESSFLOW_DB_URL` first and only composes the URL
+from `ACCESSFLOW_DB_HOST`, `ACCESSFLOW_DB_PORT` and `ACCESSFLOW_DB_NAME` when
+that variable is unset. **Production sets the complete URL** and does not use
+the three parts: the database is Aiven MySQL 8.4, which requires TLS, and the
+composed default carries `useSSL=false` and would be refused. The three parts
+exist for local development and for a self-hosted MySQL on a trusted network.
+
+| Environment | Set |
+|---|---|
+| Production (Render + Aiven) | `ACCESSFLOW_DB_URL` to the complete `jdbc:mysql://...` string |
+| Local development | none of them, and the composed default applies |
+
+Setting `ACCESSFLOW_DB_URL` takes precedence over the other three, so the
+production value is used and the parts are ignored.
+
+## Deployment
+
+The application is a plain executable Spring Boot jar, so there is nothing to
+build on the platform side beyond the Maven build. Render supplies `PORT`, and
+the database is **Aiven MySQL 8.4** over TLS.
+
+### Image
+
+Render's *Create Web Service* screen offers no Java runtime, so the service is
+deployed as a container. `Dockerfile` is a two-stage build: Maven produces the
+executable jar, and a JRE-only image runs it, so the build tooling, the Maven
+repository and the intermediate output never reach the final image. It runs as a
+non-root user and uses the exec form for `ENTRYPOINT`, so the JVM is PID 1 and
+receives `SIGTERM` directly - which is what lets Spring Boot close the Hikari
+pool on the deploy rather than have connections cut underneath it.
+
+Two things the Dockerfile deliberately does **not** do:
+
+- **Set a port.** Render injects `PORT`, and `application.properties` resolves it
+  as `server.port=${PORT:8080}`. There is no `EXPOSE` either, which would only be
+  a hardcoded port Render ignores.
+- **Set a Spring profile.** The demo seeders are `@Profile("local")` and no
+  profile is active unless one is asked for, so they cannot run in the image.
+
+| Render setting | Value |
+|---|---|
+| Build method | `Dockerfile` |
+| Dockerfile path | `./Dockerfile` |
+| Docker build context | `.` |
+| Health check path | `/css/accessflow.css` |
+| Instance count | 1 |
+
+There is no build or start command to configure: the Dockerfile's `ENTRYPOINT`
+is the start command. `-DskipTests` is in the build stage because the
+database-backed test classes are gated on `ACCESSFLOW_DB_PASSWORD` and skip in an
+image build anyway - the image should not pay to launch them.
+
+The health check path is the one route that answers `200` to an anonymous
+visitor without touching the database. `GET /` is authenticated and answers a
+redirect to `/login`; Render pings the health check path every 30 seconds and
+reports the service unhealthy on anything but a `200`.
+`/css/accessflow.css` is `permitAll`, static, and served straight off the
+classpath. Adding a dedicated health endpoint would mean a new public route and
+new configuration, and this one already exists.
+
+### Environment variables
+
+Set these in the Render dashboard under *Environment*. Five variables, nothing
+else - `PORT` is supplied by Render and must not be set by hand.
+
+| Variable | Value |
+|---|---|
+| `ACCESSFLOW_DB_URL` | the Aiven JDBC URL (below) |
+| `ACCESSFLOW_DB_USER` | the Aiven user |
+| `ACCESSFLOW_DB_PASSWORD` | that user's password |
+| `ACCESSFLOW_DDL_AUTO` | `validate` |
+| `ACCESSFLOW_SHOW_SQL` | `false` |
+
+None of these values belong in the repository or in the image.
+`application.properties` is committed and contains no hostname, no user and no
+password, and the Aiven credentials must never be committed, baked into an image
+layer, logged, or pasted into an issue.
+
+**Do not set `SPRING_PROFILES_ACTIVE=local`.** That profile enables the demo
+seeders, which create a `SUPER_ADMIN` with a password published in this README.
+The beans are absent for every other profile including `default`, so an unset
+variable is already the safe state.
+
+### The database URL
+
+Aiven requires TLS, and the composed default carries `useSSL=false`, so
+production sets the **complete** `ACCESSFLOW_DB_URL` and does not use
+`ACCESSFLOW_DB_HOST` / `_PORT` / `_NAME` at all. Aiven prints the exact string in
+its dashboard; the shape is:
+
+```
+jdbc:mysql://<aiven-host>:<aiven-port>/defaultdb
+        ?useSSL=true
+        &requireSSL=true
+        &serverTimezone=UTC
+        &allowPublicKeyRetrieval=true
+```
+
+`useSSL` and `requireSSL` are what make Aiven accept the connection. Omit them
+and the server refuses it. The URL is one line - do not insert the line breaks
+above.
+
+`verifyServerCertificate` is deliberately **not** set. Aiven presents a
+certificate from its own CA, which is not in the JVM truststore, so turning
+verification on would fail the connection with a PKIX error until that CA is
+imported. This is a deliberate trade-off, not an oversight: the connection is
+encrypted, but the server's identity is not verified against a CA the JVM trusts.
+Verifying it needs Aiven's CA in a truststore, which means a custom image, which
+is out of scope here. Revisit it if the connection leaves a private network.
+
+The composed `ACCESSFLOW_DB_HOST` / `_PORT` / `_NAME` form still exists and is
+unchanged, and it is what local development uses. It is never read in production
+because `ACCESSFLOW_DB_URL` takes precedence. If it is ever set by accident in
+production the connection goes to `localhost:3306` and the application refuses to
+start, which is a loud failure rather than a silent one.
+
+### First start
+
+The production schema has to exist before the first start, because `validate`
+checks the schema rather than creating it. Apply the DDL from *The current
+schema* below once, as the Aiven admin user, **before** the first deploy. Do not
+run `db/setup.sql` against it: that script creates a `'accessflow'@'localhost'`
+user and grants DDL rights, which is a local-development arrangement.
+
+`validate` is the right production setting rather than `none`. It checks that the
+tables and columns exist with the types the entities expect, and refuses to start
+otherwise - so a DDL mistake is a refused deployment rather than a runtime error
+on the first query. It is worth being precise about how much that proves: it does
+**not** check indexes, unique constraints, foreign keys, nullability or column
+lengths, so a green startup is not evidence those exist. Apply the full DDL.
 
 `show-sql` logs every statement Hibernate emits, pretty-printed by
 `hibernate.format_sql`. It logs the **statements, not the bound values** - an

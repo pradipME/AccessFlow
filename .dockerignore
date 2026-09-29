@@ -1,0 +1,42 @@
+# Keeps the build context small and, more importantly, keeps a local build out
+# of the image. Without this the 60 MB target/ directory and the whole .git
+# history are uploaded to the daemon on every build for no benefit - and a
+# stale local jar in the context is a jar someone might reasonably assume was
+# used to build the image. It is not: the image is built from source.
+
+# Build output and VCS
+target/
+.git/
+.gitignore
+.metadata/
+
+# Logs
+logs/
+*.log
+
+# Eclipse
+.classpath
+.project
+.settings/
+.factorypath
+.loadpath
+.recommenders/
+*.launch
+bin/
+out/
+
+# IntelliJ / NetBeans / VS Code
+.idea/
+*.iml
+*.ipr
+*.iws
+nbproject/
+nbbuild/
+nbdist/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
